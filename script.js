@@ -298,5 +298,4 @@ shelfWrapper.addEventListener("touchend", handleTouchEnd, {
 });
 
 // ===== 4. INITIALIZE =====
-
 renderShelf();

@@ -108,7 +108,7 @@ function buildGenresFromData() {
       // convert each raw row into the shape renderShelf expects
       .map((a) => ({
         title: `${a.artist} – ${a.album}`,
-        image: `img/${key}-${String(a.row).padStart(2, "0")}.png`,
+        image: `${key}-${String(a.row).padStart(2, "0")}.png`,
         spotifyUrl: a.spotifyUrl,
       }));
 
@@ -298,4 +298,5 @@ shelfWrapper.addEventListener("touchend", handleTouchEnd, {
 });
 
 // ===== 4. INITIALIZE =====
+
 renderShelf();

@@ -2,25 +2,70 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Cassette Shelf</title>
+  <title>Cassette Rack</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="app">
+  <div id="app" class="view-home">
     <header class="app-header">
       <div class="app-title">Cassette Shelf</div>
       <div class="app-subtitle">Tap a spine to open in Spotify</div>
     </header>
 
-    <main class="shelf-wrapper">
-      <div class="shelf-wrapper">
-        <div id="shelf" class="shelf"></div>
+    <main class="app-main">
+      <!-- HOME VIEW: full wall -->
+      <section id="home-view" class="view view-home">
+        <div class="shelf-wrapper home-shelf-wrapper">
+          <div id="home-shelf" class="shelf"></div>
         </div>
+      </section>
+
+      <!-- GENRE VIEW: zoomed column with neighbors -->
+      <section id="genre-view" class="view view-genre hidden">
+        <div class="shelf-wrapper genre-shelf-wrapper">
+          <div id="genre-shelf" class="shelf"></div>
+        </div>
+      </section>
+
+      <!-- ALBUM VIEW: cassette face carousel -->
+      <section id="album-view" class="view view-album hidden">
+        <div class="album-stage">
+          <div id="album-strip" class="album-strip"></div>
+        </div>
+      </section>
     </main>
 
-    <footer class="app-footer">
-      <div class="hint">Tap “View” on a column to zoom. Swipe left/right to switch genres.</div>
+    <!-- Overlay for cassette pull-out animation -->
+    <div id="pullout-overlay" class="pullout-overlay hidden">
+      <img id="pullout-image" alt="Cassette pullout" />
+    </div>
+
+    <!-- NAVIGATION BAR (fixed) -->
+    <footer class="nav-bar">
+      <!-- Home nav: genre buttons -->
+      <div id="home-nav" class="nav-row">
+        <button class="nav-pill home-genre-btn" data-genre-id="hiphop">Rap</button>
+        <button class="nav-pill home-genre-btn" data-genre-id="poprock">Pop</button>
+        <button class="nav-pill home-genre-btn" data-genre-id="rock">Rock</button>
+        <button class="nav-pill home-genre-btn" data-genre-id="metal">Metal</button>
+        <button class="nav-pill home-genre-btn" data-genre-id="country">Country</button>
+      </div>
+
+      <!-- Genre nav: arrows + back -->
+      <div id="genre-nav" class="nav-row">
+        <button id="genre-prev" class="nav-pill">&lt;</button>
+        <button id="genre-back" class="nav-pill">Back</button>
+        <button id="genre-next" class="nav-pill">&gt;</button>
+      </div>
+
+      <!-- Album nav: arrows + back + play -->
+      <div id="album-nav" class="nav-row">
+        <button id="album-prev" class="nav-pill">&lt;</button>
+        <button id="album-back" class="nav-pill">Back</button>
+        <button id="album-play" class="nav-pill primary-pill">Play</button>
+        <button id="album-next" class="nav-pill">&gt;</button>
+      </div>
     </footer>
   </div>
 

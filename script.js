@@ -1,5 +1,4 @@
-// ===== 1. ALBUM DATA (from your Excel) =====
-
+// ===== 1. ALBUM DATA =====
 const albumData = [
   { artist: "Dr. Dre", album: "The Chronic", genre: "Hip Hop", column: 1, row: 1, spotifyUrl: "https://open.spotify.com/album/2V5rhszUpCudPcb01zevOt" },
   { artist: "2 Live Crew", album: "Banned in the U.S.A.", genre: "Hip Hop", column: 1, row: 2, spotifyUrl: "https://open.spotify.com/album/1dBZatLGpRYvGesXn9JXcY" },
@@ -67,18 +66,10 @@ const albumData = [
   { artist: "The Allman Brothers Band", album: "A Decade of Hits 1969-1979", genre: "Country", column: 5, row: 12, spotifyUrl: "https://open.spotify.com/album/4HKQRECxozbRjqfNU0h0VX" },
 ];
 
-// ===== 1b. MAP DATA → GENRES + IMAGE FILENAMES =====
+// ===== 1b. BUILD GENRE STRUCTURE =====
 
-// Column index → image filename key (matches your PNG names)
-const columnKey = {
-  1: "hiphop",
-  2: "poprock",
-  3: "rock",
-  4: "metal",
-  5: "country",
-};
+const columnKey = { 1: "hiphop", 2: "poprock", 3: "rock", 4: "metal", 5: "country" };
 
-// Human-readable names for the headers
 const genreNames = {
   hiphop: "Hip Hop",
   poprock: "Pop / Rock",
@@ -87,102 +78,110 @@ const genreNames = {
   country: "Country",
 };
 
-// Build the "genres" structure the rest of the code expects
 function buildGenresFromData() {
-  const grouped = {};
+  const groups = {};
 
   albumData.forEach((a) => {
     const key = columnKey[a.column];
-    if (!key) return; // ignore if column is out of range
-
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(a);
+    if (!key) return;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(a);
   });
 
-  const result = [];
-
-  Object.keys(grouped).forEach((key) => {
-    const albums = grouped[key]
-      // make sure they're in top-to-bottom order
+  const result = Object.keys(groups).map((key) => {
+    const albums = groups[key]
       .sort((a, b) => a.row - b.row)
-      // convert each raw row into the shape renderShelf expects
       .map((a) => ({
         title: `${a.artist} – ${a.album}`,
         image: `${key}-${String(a.row).padStart(2, "0")}.png`,
+        faceImage: `${key}-${String(a.row).padStart(2, "0")}-face.png`,
         spotifyUrl: a.spotifyUrl,
       }));
 
-    result.push({
+    return {
       id: key,
       name: genreNames[key],
       albums,
-    });
+      column: Number(Object.keys(columnKey).find((c) => columnKey[c] === key)),
+    };
   });
 
-  // Ensure columns appear in order 1 → 5
-  result.sort((a, b) => {
-    const aCol = Number(
-      Object.keys(columnKey).find((c) => columnKey[c] === a.id)
-    );
-    const bCol = Number(
-      Object.keys(columnKey).find((c) => columnKey[c] === b.id)
-    );
-    return aCol - bCol;
-  });
-
+  result.sort((a, b) => a.column - b.column);
   return result;
 }
 
-// This is what the rest of your code uses
 const genres = buildGenresFromData();
 
-
-// ===== 2. RENDER: build the DOM =====
+// ===== 2. STATE + ELEMENTS =====
 
 const appEl = document.getElementById("app");
-const shelfEl = document.getElementById("shelf");
 
-let zoomed = false;
+const homeViewEl = document.getElementById("home-view");
+const homeShelfEl = document.getElementById("home-shelf");
+
+const genreViewEl = document.getElementById("genre-view");
+const genreShelfEl = document.getElementById("genre-shelf");
+
+const albumViewEl = document.getElementById("album-view");
+const albumStripEl = document.getElementById("album-strip");
+
+const pulloutOverlayEl = document.getElementById("pullout-overlay");
+const pulloutImgEl = document.getElementById("pullout-image");
+
+let currentView = "home"; // "home" | "genre" | "album"
 let activeGenreIndex = 0;
+let activeAlbumIndex = 0;
 
-function updateShelfOffset() {
-  if (!zoomed) {
-    // ALL mode: show full wall as-is
-    shelfEl.style.setProperty("--shelf-offset", "0px");
-    return;
+// ===== 3. VIEW SWITCHING =====
+
+function setView(view) {
+  currentView = view;
+  appEl.classList.remove("view-home", "view-genre", "view-album");
+  appEl.classList.add(`view-${view}`);
+
+  homeViewEl.classList.toggle("hidden", view !== "home");
+  genreViewEl.classList.toggle("hidden", view !== "genre");
+  albumViewEl.classList.toggle("hidden", view !== "album");
+
+  if (view === "home") {
+    renderHomeShelf();
+  } else if (view === "genre") {
+    renderGenreShelf();
+  } else if (view === "album") {
+    renderAlbumStrip();
   }
 
-  const columns = Array.from(document.querySelectorAll(".genre-column"));
-  if (!columns.length) return;
-
-  const activeCol = columns[activeGenreIndex];
-  const shelfRect = shelfEl.getBoundingClientRect();
-  const activeRect = activeCol.getBoundingClientRect();
-
-  // Center of shelf & active column, in shelf coords
-  const shelfCenter = shelfRect.width / 2;
-  const activeCenter =
-    activeRect.left - shelfRect.left + activeRect.width / 2;
-
-  const delta = shelfCenter - activeCenter;
-
-  // This will naturally leave some of each neighbor visible
-  shelfEl.style.setProperty("--shelf-offset", `${delta}px`);
+  updateNavButtons();
 }
 
-function renderShelf() {
-  shelfEl.innerHTML = "";
+function updateNavButtons() {
+  const genrePrevBtn = document.getElementById("genre-prev");
+  const genreNextBtn = document.getElementById("genre-next");
+  if (genrePrevBtn && genreNextBtn) {
+    genrePrevBtn.disabled = activeGenreIndex === 0;
+    genreNextBtn.disabled = activeGenreIndex === genres.length - 1;
+  }
+
+  const albumPrevBtn = document.getElementById("album-prev");
+  const albumNextBtn = document.getElementById("album-next");
+  if (albumPrevBtn && albumNextBtn && currentView === "album") {
+    const albums = genres[activeGenreIndex].albums;
+    albumPrevBtn.disabled = activeAlbumIndex === 0;
+    albumNextBtn.disabled = activeAlbumIndex === albums.length - 1;
+  }
+}
+
+// ===== 4. HOME VIEW (wall) =====
+
+function renderHomeShelf() {
+  homeShelfEl.innerHTML = "";
+  homeShelfEl.style.setProperty("--shelf-offset", "0px");
 
   genres.forEach((genre, index) => {
     const col = document.createElement("div");
     col.className = "genre-column";
     col.dataset.genreId = genre.id;
 
-    if (zoomed && index === activeGenreIndex) {
-      col.classList.add("active-genre");
-    }
-
-    // Header
     const header = document.createElement("div");
     header.className = "genre-header";
 
@@ -190,29 +189,13 @@ function renderShelf() {
     nameEl.className = "genre-name";
     nameEl.textContent = genre.name;
 
-    const controls = document.createElement("div");
-    controls.className = "genre-controls";
-
-    const viewBtn = document.createElement("button");
-    viewBtn.className = "view-btn";
-    viewBtn.textContent =
-      zoomed && index === activeGenreIndex ? "Close" : "View";
-
-    viewBtn.addEventListener("click", (event) => {
-      event.stopPropagation(); // don't trigger other clicks
-      handleViewClick(index);
-    });
-
-    controls.appendChild(viewBtn);
     header.appendChild(nameEl);
-    header.appendChild(controls);
     col.appendChild(header);
 
-    // Album spines
     const list = document.createElement("div");
     list.className = "album-list";
 
-    genre.albums.forEach((album) => {
+    genre.albums.forEach((album, albumIndex) => {
       const spine = document.createElement("div");
       spine.className = "album-spine";
 
@@ -222,42 +205,294 @@ function renderShelf() {
 
       spine.appendChild(img);
 
-      spine.addEventListener("click", () => {
-        // Open Spotify album
-        if (album.spotifyUrl && album.spotifyUrl !== "#") {
-          window.open(album.spotifyUrl, "_blank");
-        }
+      // From Home: clicking a spine takes you to the Genre view, with that album selected
+      spine.addEventListener("click", (e) => {
+        e.stopPropagation();
+        activeAlbumIndex = albumIndex;
+        goToGenre(index);
       });
 
       list.appendChild(spine);
     });
 
+    // Clicking anywhere in the column title/area (except spine clicks)
+    // should go to Genre view with first album selected
+    col.addEventListener("click", () => {
+      activeAlbumIndex = 0;
+      goToGenre(index);
+    });
+
     col.appendChild(list);
-    shelfEl.appendChild(col);
+    homeShelfEl.appendChild(col);
+  });
+}
+
+// ===== 5. GENRE VIEW (zoomed column) =====
+
+function updateGenreShelfOffset() {
+  const columns = Array.from(genreShelfEl.querySelectorAll(".genre-column"));
+  if (!columns.length) return;
+
+  const activeCol = columns[activeGenreIndex];
+  const shelfRect = genreShelfEl.getBoundingClientRect();
+  const activeRect = activeCol.getBoundingClientRect();
+
+  const shelfCenter = shelfRect.width / 2;
+  const activeCenter = activeRect.left - shelfRect.left + activeRect.width / 2;
+
+  const delta = shelfCenter - activeCenter;
+  genreShelfEl.style.setProperty("--shelf-offset", `${delta}px`);
+}
+
+function renderGenreShelf() {
+  genreShelfEl.innerHTML = "";
+
+  genres.forEach((genre, index) => {
+    const col = document.createElement("div");
+    col.className = "genre-column";
+    col.dataset.genreId = genre.id;
+
+    const header = document.createElement("div");
+    header.className = "genre-header";
+
+    const nameEl = document.createElement("div");
+    nameEl.className = "genre-name";
+    nameEl.textContent = genre.name;
+
+    header.appendChild(nameEl);
+    col.appendChild(header);
+
+    const list = document.createElement("div");
+    list.className = "album-list";
+
+    genre.albums.forEach((album, albumIndex) => {
+  const spine = document.createElement("div");
+  spine.className = "album-spine";
+
+  const img = document.createElement("img");
+  img.src = album.image;
+  img.alt = album.title;
+
+  spine.appendChild(img);
+
+  spine.addEventListener("click", () => {
+    if (index === activeGenreIndex) {
+      // Clicked in the currently focused column → pull out & go to Album View
+      activeAlbumIndex = albumIndex;
+      startPulloutAnimation(spine, genre, albumIndex);
+    } else {
+      // Clicked in a neighbor column → recenter on that genre (no Album View yet)
+      activeGenreIndex = index;
+      activeAlbumIndex = albumIndex; // optional: remember which row they tapped
+      renderGenreShelf();
+    }
   });
 
-  updateShelfOffset();
+  list.appendChild(spine);
+});
+
+    col.appendChild(list);
+    genreShelfEl.appendChild(col);
+  });
+
+  updateGenreShelfOffset();
+  updateNavButtons();
 }
 
-function handleViewClick(index) {
-  if (!zoomed) {
-    zoomed = true;
-    activeGenreIndex = index;
-    appEl.classList.add("zoomed");
-  } else {
-    // If clicking the active column, close zoom; otherwise switch to new column
-    if (activeGenreIndex === index) {
-      zoomed = false;
-      appEl.classList.remove("zoomed");
-    } else {
-      activeGenreIndex = index;
-    }
+function goToGenre(genreIndex) {
+  activeGenreIndex = genreIndex;
+  setView("genre");
+}
+
+// ===== 5b. PULLOUT ANIMATION =====
+
+function startPulloutAnimation(spineEl, genre, albumIndex) {
+  const album = genre.albums[albumIndex];
+  if (!album) {
+    setView("album");
+    return;
   }
 
-  renderShelf();
+  // 1) Get spine rect and main content rect
+  const rect = spineEl.getBoundingClientRect();
+  const mainRect = document.querySelector(".app-main").getBoundingClientRect();
+
+  // 2) Prepare overlay image starting exactly over the spine
+  pulloutOverlayEl.classList.remove("hidden");
+  pulloutImgEl.src = album.image; // spine art; could be album.faceImage instead
+
+  pulloutImgEl.style.left = `${rect.left}px`;
+  pulloutImgEl.style.top = `${rect.top}px`;
+  pulloutImgEl.style.width = `${rect.width}px`;
+  pulloutImgEl.style.height = `${rect.height}px`;
+  pulloutImgEl.style.opacity = "1";
+
+  // Start aligned with the spine
+  pulloutImgEl.style.transform = "translate3d(0, 0, 0) scale(1)";
+
+  // Leave a blank slot in the rack
+  spineEl.style.opacity = "0";
+
+  // Force reflow so the browser applies the initial transform
+  // eslint-disable-next-line no-unused-expressions
+  pulloutImgEl.offsetHeight;
+
+  // 3) Target position: center of the main content area (where album view sits)
+  const startCenterX = rect.left + rect.width / 2;
+  const startCenterY = rect.top + rect.height / 2;
+
+  const targetCenterX = mainRect.left + mainRect.width / 2;
+  const targetCenterY = mainRect.top + mainRect.height / 2;
+
+  const dx = targetCenterX - startCenterX;
+  const dy = targetCenterY - startCenterY;
+
+  // 4) Target size: fixed visual size, independent of which row you clicked
+  const maxWidth = Math.min(mainRect.width * 0.7, 360);
+  const scale = maxWidth / rect.width;
+
+  // 5) Animate: slide + zoom straight out
+  pulloutImgEl.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${scale})`;
+
+  // 6) When animation finishes, fade overlay and switch to Album View
+  const onTransitionEnd = () => {
+  pulloutImgEl.removeEventListener("transitionend", onTransitionEnd);
+
+  // fade overlay out quickly
+  pulloutImgEl.style.opacity = "0";
+
+  setTimeout(() => {
+    // switch to Album View; Genre view will be re-rendered if we ever go back
+    setView("album");
+
+    // reset overlay state for future animations
+    pulloutOverlayEl.classList.add("hidden");
+    pulloutImgEl.style.transform = "";
+    pulloutImgEl.style.opacity = "";
+
+    // IMPORTANT: do NOT restore spine opacity here
+    // Genre view is rebuilt from data when we navigate back,
+    // so this specific spineEl will be thrown away.
+  }, 150);
+  };
+
+  // Remove any previous listeners before adding a new one, so it always fires
+  pulloutImgEl.removeEventListener("transitionend", onTransitionEnd);
+  pulloutImgEl.addEventListener("transitionend", onTransitionEnd);
 }
 
-// ===== 3. SWIPE HANDLING (for zoomed mode) =====
+// ===== 6. ALBUM VIEW (face carousel) =====
+
+function updateAlbumOffset() {
+  const cards = Array.from(albumStripEl.querySelectorAll(".album-card"));
+  if (!cards.length) return;
+
+  cards.forEach((card, i) => {
+    card.classList.toggle("active", i === activeAlbumIndex);
+  });
+
+  const activeCard = cards[activeAlbumIndex];
+  const stripRect = albumStripEl.getBoundingClientRect();
+  const activeRect = activeCard.getBoundingClientRect();
+
+  const stripCenter = stripRect.width / 2;
+  const activeCenter = activeRect.left - stripRect.left + activeRect.width / 2;
+
+  const delta = stripCenter - activeCenter;
+  albumStripEl.style.setProperty("--album-offset", `${delta}px`);
+
+  updateNavButtons();
+}
+
+function renderAlbumStrip() {
+  albumStripEl.innerHTML = "";
+  const genre = genres[activeGenreIndex];
+
+  genre.albums.forEach((album, index) => {
+    const card = document.createElement("div");
+    card.className = "album-card";
+    if (index === activeAlbumIndex) card.classList.add("active");
+
+    const img = document.createElement("img");
+    img.src = album.faceImage;
+    img.alt = album.title;
+
+    card.appendChild(img);
+    card.addEventListener("click", () => {
+      activeAlbumIndex = index;
+      updateAlbumOffset();
+    });
+
+    albumStripEl.appendChild(card);
+  });
+
+  updateAlbumOffset();
+}
+
+// ===== 7. NAV BUTTONS & EVENTS =====
+
+// Home genre buttons
+document.querySelectorAll(".home-genre-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const genreId = btn.dataset.genreId;
+    const index = genres.findIndex((g) => g.id === genreId);
+    if (index !== -1) {
+      activeAlbumIndex = 0;
+      goToGenre(index);
+    }
+  });
+});
+
+// Genre nav
+document.getElementById("genre-prev").addEventListener("click", () => {
+  if (activeGenreIndex > 0) {
+    activeGenreIndex--;
+    renderGenreShelf();
+    updateNavButtons();
+  }
+});
+
+document.getElementById("genre-next").addEventListener("click", () => {
+  if (activeGenreIndex < genres.length - 1) {
+    activeGenreIndex++;
+    renderGenreShelf();
+    updateNavButtons();
+  }
+});
+
+document.getElementById("genre-back").addEventListener("click", () => {
+  setView("home");
+});
+
+// Album nav
+document.getElementById("album-prev").addEventListener("click", () => {
+  const albums = genres[activeGenreIndex].albums;
+  if (activeAlbumIndex > 0) {
+    activeAlbumIndex--;
+    updateAlbumOffset();
+  }
+});
+
+document.getElementById("album-next").addEventListener("click", () => {
+  const albums = genres[activeGenreIndex].albums;
+  if (activeAlbumIndex < albums.length - 1) {
+    activeAlbumIndex++;
+    updateAlbumOffset();
+  }
+});
+
+document.getElementById("album-back").addEventListener("click", () => {
+  setView("genre");
+});
+
+document.getElementById("album-play").addEventListener("click", () => {
+  const album = genres[activeGenreIndex].albums[activeAlbumIndex];
+  if (album.spotifyUrl && album.spotifyUrl !== "#") {
+    window.open(album.spotifyUrl, "_blank");
+  }
+});
+
+// ===== 8. SWIPE HANDLING =====
 
 let touchStartX = 0;
 let touchEndX = 0;
@@ -266,36 +501,44 @@ function handleTouchStart(e) {
   touchStartX = e.changedTouches[0].clientX;
 }
 
-function handleTouchEnd(e) {
+function handleTouchEnd(e, context) {
   touchEndX = e.changedTouches[0].clientX;
-  handleSwipeGesture();
-}
-
-function handleSwipeGesture() {
-  if (!zoomed) return;
-
   const diffX = touchEndX - touchStartX;
-  const threshold = 30; // px before we consider it a swipe
-
+  const threshold = 30;
   if (Math.abs(diffX) < threshold) return;
 
-  if (diffX < 0 && activeGenreIndex < genres.length - 1) {
-    activeGenreIndex++;
-    renderShelf();
-  } else if (diffX > 0 && activeGenreIndex > 0) {
-    activeGenreIndex--;
-    renderShelf();
+  if (context === "genre") {
+    if (diffX < 0 && activeGenreIndex < genres.length - 1) {
+      activeGenreIndex++;
+      renderGenreShelf();
+    } else if (diffX > 0 && activeGenreIndex > 0) {
+      activeGenreIndex--;
+      renderGenreShelf();
+    }
+  } else if (context === "album") {
+    const albums = genres[activeGenreIndex].albums;
+    if (diffX < 0 && activeAlbumIndex < albums.length - 1) {
+      activeAlbumIndex++;
+      updateAlbumOffset();
+    } else if (diffX > 0 && activeAlbumIndex > 0) {
+      activeAlbumIndex--;
+      updateAlbumOffset();
+    }
   }
 }
 
-// Attach touch listeners to main shelf wrapper
-const shelfWrapper = document.querySelector(".shelf-wrapper");
-shelfWrapper.addEventListener("touchstart", handleTouchStart, {
-  passive: true,
-});
-shelfWrapper.addEventListener("touchend", handleTouchEnd, {
+// Attach swipe listeners
+const genreWrapper = document.querySelector(".genre-shelf-wrapper");
+genreWrapper.addEventListener("touchstart", handleTouchStart, { passive: true });
+genreWrapper.addEventListener("touchend", (e) => handleTouchEnd(e, "genre"), {
   passive: true,
 });
 
-// ===== 4. INITIALIZE =====
-renderShelf();
+const albumStage = document.querySelector(".album-stage");
+albumStage.addEventListener("touchstart", handleTouchStart, { passive: true });
+albumStage.addEventListener("touchend", (e) => handleTouchEnd(e, "album"), {
+  passive: true,
+});
+
+// ===== 9. INIT =====
+setView("home");

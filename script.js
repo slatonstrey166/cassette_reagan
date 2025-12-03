@@ -338,8 +338,8 @@ function startPulloutAnimation(spineEl, genre, albumIndex) {
   const FACE_GROW_MS    = 1000;   // face grow (vertical only)
   const FACE_FLY_MS     = 1000;   // face fly to Album View
   const FACE_GROW_SCALE = 7.5;  // how tall the face grows, in multiples of spine height
-  const FACE_FLY_SCALE_X = 6.75; //how wide the face grows during Phase 4, fly and transition to Album view
-  const FACE_FLY_SCALE_Y = 6.75; //how tall the face grows during Phase 4, fly and transition to Album view
+  const FACE_FLY_SCALE_X = 2.0; //how wide the face grows during Phase 4, fly and transition to Album view
+  const FACE_FLY_SCALE_Y = 2.0; //how tall the face grows during Phase 4, fly and transition to Album view
 
   // Overlay elements
   const overlay = pulloutOverlayEl; // #pullout-overlay
@@ -688,4 +688,5 @@ albumPlayBtn.addEventListener("click", () => {
 
 renderHomeShelf();
 setView("home");
+
 

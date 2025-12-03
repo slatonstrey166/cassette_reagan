@@ -108,7 +108,8 @@ body {
 /* shrink wall on small screens so all 5 columns fit */
 @media (max-width: 480px) {
   #home-shelf .genre-column {
-    transform: scale(0.6);
+    transform: scale(0.45);
+    margin-right: -6px;
   }
 }
 
@@ -188,21 +189,32 @@ body {
 /* ===== ALBUM VIEW (face carousel) ===== */
 
 .album-stage {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 55vh;          /* <-- key part of Fix 4 */
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
   padding: 16px 8px 8px;
+  overflow: hidden;
 }
 
+/* The sliding strip of album cards */
 .album-strip {
   display: flex;
-  flex-direction: row;
-  align-items: center;
   gap: 16px;
+  will-change: transform;
   transform: translateX(var(--album-offset, 0px));
-  transition: transform 0.25s ease-out;
+  transition: transform 260ms ease-out;
+}
+
+
+@media (max-width: 480px) {
+    .album-card {
+        gap: 8px;
+    }
+    .album-card.active {
+        transform: scale(1.05);
+    }
 }
 
 .album-card {
@@ -228,8 +240,19 @@ body {
 /* ===== NAV BAR ===== */
 
 .nav-bar {
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
-  padding: 8px 12px calc(env(safe-area-inset-bottom, 0px) + 10px);
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(8px);
+
+  padding: 12px 18px calc(env(safe-area-inset-bottom, 25px) + 22px);
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  z-index: 999;
 }
 
 .nav-row {
@@ -313,4 +336,31 @@ body {
     transform 0.3s ease-out,
     opacity 0.3s ease-out,
     height 0.3s ease-out;
+}
+
+/* ===== MOBILE LAYOUT FIXES ===== */
+@media (max-width: 480px) {
+
+  /* Make the columns much narrower on small screens */
+  #genre-shelf .genre-column {
+    width: 110px;
+    min-width: 110px;
+    max-width: 110px;
+  }
+
+  #home-shelf .genre-column {
+    transform: scale(0.45);
+    margin-right: -10px;
+  }
+
+  /* Make album spines slightly taller for touch targets */
+  .album-spine img {
+    height: auto;
+    width: 100%;
+  }
+
+  /* Reduce gaps */
+  #genre-shelf {
+    gap: 0px;
+  }
 }

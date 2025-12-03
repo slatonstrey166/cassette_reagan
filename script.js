@@ -334,10 +334,12 @@ function startPulloutAnimation(spineEl, genre, albumIndex) {
 
   // ---- Timing controls (ms) ----
   const SPINE_GROW_MS   = 1000;   // spine pull-out + grow
-  const SPINE_SHRINK_MS = 1000;   // spine shrink (horizontal only)
+  const SPINE_SHRINK_MS = 800;   // spine shrink (horizontal only)
   const FACE_GROW_MS    = 1000;   // face grow (vertical only)
   const FACE_FLY_MS     = 1000;   // face fly to Album View
   const FACE_GROW_SCALE = 7.5;  // how tall the face grows, in multiples of spine height
+  const FACE_FLY_SCALE_X = 1.0; //how wide the face grows during Phase 4, fly and transition to Album view
+  const FACE_FLY_SCALE_Y = 1.0; //how tall the face grows during Phase 4, fly and transition to Album view
 
   // Overlay elements
   const overlay = pulloutOverlayEl; // #pullout-overlay
@@ -424,30 +426,56 @@ function startPulloutAnimation(spineEl, genre, albumIndex) {
     });
   }, SPINE_GROW_MS + SPINE_SHRINK_MS);
 
-  // ---- PHASE 4: Face fly to Album View (keep same size) ----
-  setTimeout(() => {
-    // Try to align with the actual album image in Album View
-    const albumImgEl = document.querySelector("#album-image img");
-    let targetLeft, targetTop;
+  // ---- PHASE 4: Face fly to Album View (resize WHILE flying) ----
+    setTimeout(() => {
+        const albumImgEl = document.querySelector("#album-image img");
+        let targetLeft, targetTop;
 
-    if (albumImgEl) {
-      const r = albumImgEl.getBoundingClientRect();
-      // Because our overlay is anchored at top-left, align its top-left to the album image top-left
-      targetLeft = r.left;
-      targetTop  = r.top;
-    } else {
-      // Fallback: approximate center of viewport
-      targetLeft = (window.innerWidth  - parseFloat(imgEl.style.width)) / 2;
-      targetTop  = (window.innerHeight * 0.35);
-    }
+        // Current (pre-scale) overlay size in pixels
+        const baseWidth  = parseFloat(imgEl.style.width)  || imgEl.getBoundingClientRect().width;
+        const baseHeight = parseFloat(imgEl.style.height) || imgEl.getBoundingClientRect().height;
 
-    imgEl.style.transition =
-      `top ${FACE_FLY_MS}ms ease-out, left ${FACE_FLY_MS}ms ease-out`;
+        if (albumImgEl) {
+            const r = albumImgEl.getBoundingClientRect();
 
-    imgEl.style.left = `${targetLeft}px`;
-    imgEl.style.top  = `${targetTop}px`;
-    // NOTE: we do NOT change width/height here, so size stays exactly as Phase 3
-  }, SPINE_GROW_MS + SPINE_SHRINK_MS + FACE_GROW_MS);
+            // Center of the album image
+            const albumCenterX = r.left + r.width / 2;
+            const albumCenterY = r.top  + r.height / 2;
+
+            // What the overlay size will be AFTER scale
+            const scaledWidth  = baseWidth  * FACE_FLY_SCALE_X;
+            const scaledHeight = baseHeight * FACE_FLY_SCALE_Y;
+
+            // Position overlay so its CENTER matches album center
+            targetLeft = albumCenterX - scaledWidth / 2;
+            targetTop  = albumCenterY - scaledHeight / 2;
+        } else {
+            // Fallback: approximate center of viewport using scaled size
+            const scaledWidth  = baseWidth  * FACE_FLY_SCALE_X;
+            const scaledHeight = baseHeight * FACE_FLY_SCALE_Y;
+
+            targetLeft = (window.innerWidth  - scaledWidth)  / 2;
+            targetTop  = (window.innerHeight * 0.35) - scaledHeight / 2;
+        }
+
+        // 1) Start from the Phase 3 state without transitions
+        imgEl.style.transition = "none";
+
+        // 2) Next frame: animate both position AND scale to the targets
+        requestAnimationFrame(() => {
+            imgEl.style.transition =
+                `top ${FACE_FLY_MS}ms ease-out,
+                left ${FACE_FLY_MS}ms ease-out,
+                transform ${FACE_FLY_MS}ms ease-out`;
+
+            imgEl.style.left = `${targetLeft}px`;
+            imgEl.style.top  = `${targetTop}px`;
+
+            imgEl.style.transform =
+                `translateY(0) scale(${FACE_FLY_SCALE_X}, ${FACE_FLY_SCALE_Y})`;
+        });
+    }, SPINE_GROW_MS + SPINE_SHRINK_MS + FACE_GROW_MS);
+
 
   // ---- PHASE 5: Show Album View & fade overlay ----
   setTimeout(() => {
@@ -464,13 +492,21 @@ function startPulloutAnimation(spineEl, genre, albumIndex) {
     imgEl.style.opacity = "0";
 
     setTimeout(() => {
-      overlay.classList.remove("active");
-      overlay.classList.add("hidden");
-      overlay.style.display = "none";
-      imgEl.style.opacity = "1";
-      imgEl.style.transformOrigin = "50% 50%";
-      spineEl.style.opacity = "1";
+        // Remove overlay image completely
+        imgEl.src = "";
+        imgEl.style.width = "0px";
+        imgEl.style.height = "0px";
+        imgEl.style.opacity = "0";
+        
+        // Hide overlay container
+        overlay.classList.remove("active");
+        overlay.classList.add("hidden");
+        overlay.style.display = "none";
+        
+        // Restore original spine
+        spineEl.style.opacity = "1";
     }, 350);
+
   }, SPINE_GROW_MS + SPINE_SHRINK_MS + FACE_GROW_MS + FACE_FLY_MS);
 }
 
@@ -497,18 +533,24 @@ function updateAlbumOffset() {
   const activeCard = cards[activeAlbumIndex];
   const cardRect = activeCard.getBoundingClientRect();
 
-  // Real center of the stage
-  const stageCenter = stageRect.width / 2;
+    // Real center of the stage (viewport area that albums occupy)
+    const stageCenter = stageRect.width / 2;
 
-  // Real center of the active card, relative to the strip
-  const cardCenter =
-    (cardRect.left - stripRect.left) + (cardRect.width / 2);
+    // Real center of the active card, relative to the strip
+    const cardCenter =
+        (cardRect.left - stripRect.left) + (cardRect.width / 2);
 
-  // Offset needed to bring active card to center
-  const delta = stageCenter - cardCenter;
+    // Center of the strip itself
+    const stripCenter = stripRect.width / 2;
 
-  // Apply smoothly
-  albumStripEl.style.setProperty("--album-offset", `${delta}px`);
+    // Small left/right bias on phones only
+    const bias = window.innerWidth <= 480 ? 8 : 0;
+
+    // Amount to shift
+    const delta = stripCenter - cardCenter - bias;
+
+    // Apply smoothly
+    albumStripEl.style.setProperty("--album-offset", `${delta}px`);
 
   updateNavButtons();
 }

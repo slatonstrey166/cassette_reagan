@@ -481,19 +481,34 @@ function updateAlbumOffset() {
   const cards = Array.from(albumStripEl.querySelectorAll(".album-card"));
   if (!cards.length) return;
 
-  const activeCard = cards[activeAlbumIndex];
+  // Ensure activeAlbumIndex is always in range
+  const maxIndex = cards.length - 1;
+  activeAlbumIndex = Math.max(0, Math.min(activeAlbumIndex, maxIndex));
+
+  // Mark the active card
+  cards.forEach((card, i) => {
+    card.classList.toggle("active", i === activeAlbumIndex);
+  });
+
+  // Get actual live geometry (THIS is what fixes iPhone)
+  const stageEl = document.querySelector(".album-stage");
+  const stageRect = stageEl.getBoundingClientRect();
   const stripRect = albumStripEl.getBoundingClientRect();
+  const activeCard = cards[activeAlbumIndex];
   const cardRect = activeCard.getBoundingClientRect();
 
-  const stripCenter = stripRect.width / 2;
-  const cardCenter = cardRect.left - stripRect.left + cardRect.width / 2;
+  // Real center of the stage
+  const stageCenter = stageRect.width / 2;
 
-  const delta = stripCenter - cardCenter;
+  // Real center of the active card, relative to the strip
+  const cardCenter =
+    (cardRect.left - stripRect.left) + (cardRect.width / 2);
+
+  // Offset needed to bring active card to center
+  const delta = stageCenter - cardCenter;
+
+  // Apply smoothly
   albumStripEl.style.setProperty("--album-offset", `${delta}px`);
-
-  cards.forEach((c, i) => {
-    c.classList.toggle("active", i === activeAlbumIndex);
-  });
 
   updateNavButtons();
 }

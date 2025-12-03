@@ -209,13 +209,16 @@ body {
 
 
 @media (max-width: 480px) {
-    .album-card {
-        gap: 8px;
-    }
-    .album-card.active {
-        transform: scale(1.05);
-    }
+  .album-card {
+    flex: 0 0 78vw;          /* a bit wider on phone */
+    max-width: 420px;
+  }
+
+  .album-card.active {
+    transform: scale(1.02);  /* subtle emphasis */
+  }
 }
+
 
 .album-card {
   flex: 0 0 70vw;
@@ -341,16 +344,24 @@ body {
 /* ===== MOBILE LAYOUT FIXES ===== */
 @media (max-width: 480px) {
 
-  /* Make the columns much narrower on small screens */
+  /* GENRE: a bit narrower so we still see neighbors */
   #genre-shelf .genre-column {
     width: 110px;
     min-width: 110px;
     max-width: 110px;
   }
 
+  /* HOME: make all 5 columns fit tightly like the desktop wall */
+  #home-shelf {
+    transform: scale(0.82);          /* overall shrink of the wall */
+    transform-origin: top center;
+  }
+
   #home-shelf .genre-column {
-    transform: scale(0.45);
-    margin-right: -10px;
+    width: 90px;
+    min-width: 90px;
+    max-width: 90px;
+    margin-right: -12px;             /* pulls columns closer together */
   }
 
   /* Make album spines slightly taller for touch targets */
@@ -359,8 +370,12 @@ body {
     width: 100%;
   }
 
-  /* Reduce gaps */
+  /* Reduce gaps in GENRE view so center + neighbors feel tight */
   #genre-shelf {
     gap: 0px;
+  }
+    /* Let the spines use more vertical space on phone */
+  .album-list {
+    max-height: calc(100vh - 135px); /* change to 120px for even more height */
   }
 }

@@ -1,160 +1,149 @@
-/* ===== RESET-ish ===== */
+/* ===== RESET / BASE ===== */
+
 *,
 *::before,
 *::after {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 html,
 body {
+  margin: 0;
+  padding: 0;
   height: 100%;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    sans-serif;
   background: #050509;
   color: #f5f5f5;
-  -webkit-font-smoothing: antialiased;
 }
 
-/* ===== APP FRAME ===== */
+/* Main app layout */
 
 #app {
-  height: 100vh;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right)
-    env(safe-area-inset-bottom) env(safe-area-inset-left);
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #050509;
+  background: radial-gradient(circle at top, #15151b 0, #050509 55%);
+  color: #f5f5f5;
 }
 
 .app-header {
-  padding: 8px 16px 6px;
+  padding: 12px 16px 4px;
+  text-align: center;
 }
 
 .app-title {
-  font-weight: 700;
-  letter-spacing: 0.04em;
   font-size: 18px;
+  font-weight: 600;
 }
 
 .app-subtitle {
-  font-size: 12px;
+  margin-top: 2px;
+  font-size: 11px;
   opacity: 0.7;
 }
-
-/* ===== VIEWS ===== */
 
 .app-main {
   flex: 1;
   display: flex;
-  position: relative;
+  flex-direction: column;
   overflow: hidden;
+  padding: 4px 8px 0;
 }
 
+/* Views */
+
 .view {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
+  flex: 1;
+  display: none;
   transition: opacity 0.25s ease-out, transform 0.25s ease-out;
 }
 
-.view-home {
-  justify-content: flex-start;
-}
-
-.view-genre,
-.view-album {
-  justify-content: center;
-}
-
-.hidden {
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* Lift current view slightly for "zoom" feel */
 #app.view-home #home-view {
+  display: flex;
   opacity: 1;
-  transform: scale(1);
+  transform: scale(0.97);
 }
 
 #app.view-genre #genre-view {
-  opacity: 1;
-  transform: scale(1.03);
-}
-
-#app.view-album #album-view {
+  display: flex;
   opacity: 1;
   transform: scale(1.02);
 }
 
-/* ===== SHELF / COLUMNS (shared) ===== */
+#app.view-album #album-view {
+  display: flex;
+  opacity: 1;
+  transform: scale(1.02);
+}
+
+/* ===== SHELVES (home + genre) ===== */
 
 .shelf-wrapper {
   flex: 1;
   display: flex;
-  align-items: flex-start;
   justify-content: center;
+  align-items: flex-start;
   overflow: hidden;
 }
 
-.shelf {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  justify-content: flex-start;
-  transform: translateX(var(--shelf-offset, 0px));
-  transition: transform 0.25s ease-out;
-  gap: 0px;
-}
+/* HOME: whole wall, slightly smaller on phone */
 
-/* Home view: smaller wall, tighter columns */
 .home-shelf-wrapper {
   padding-top: 8px;
 }
 
+#home-shelf {
+  display: flex;
+  gap: 4px;
+}
+
 #home-shelf .genre-column {
-  transform: scale(1);       /* Option A: 55% wall */
   transform-origin: top center;
 }
 
-/* Genre view uses full-size columns */
-.genre-shelf-wrapper {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
+/* shrink wall on small screens so all 5 columns fit */
+@media (max-width: 480px) {
+  #home-shelf .genre-column {
+    transform: scale(0.6);
+  }
 }
 
-/* Individual genre column */
+/* GENRE view: wider columns, centered active + neighbors */
+
+.genre-shelf-wrapper {
+  padding: 4px 0 0;
+}
+
+#genre-shelf {
+  display: flex;
+  gap: 0;
+  transform: translateX(var(--shelf-offset, 0px));
+  transition: transform 0.25s ease-out;
+}
+
+/* Base genre column */
+
 .genre-column {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 90px;
-  min-width: 90px;
-  max-width: 90px;
-  flex: 0 0 90px;
-  padding: 0;
-  margin: 0;
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
 }
 
-/* Genre View: wider columns */
 #genre-shelf .genre-column {
   width: 180px;
   min-width: 180px;
   max-width: 180px;
-  flex: 0 0 180px;
-  transform: none;
-  transform-origin: center;
 }
 
-/* Genre header (label only) */
+/* headers */
+
 .genre-header {
   width: 100%;
   text-align: center;
@@ -165,25 +154,25 @@ body {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  margin-bottom: 4px;
 }
 
-/* Album list inside column */
+/* album lists */
+
 .album-list {
-  max-height: calc(100vh - 150px);
+  max-height: calc(100vh - 170px);
   overflow-y: auto;
 }
 
-/* Hide scrollbar */
 .album-list::-webkit-scrollbar {
   display: none;
 }
 
-/* Tape spines */
+/* spines */
+
 .album-spine {
   margin-bottom: 1px;
   cursor: pointer;
-  transition: transform 0.1s ease-out;
+  transition: transform 0.08s ease-out;
 }
 
 .album-spine img {
@@ -196,7 +185,7 @@ body {
   transform: scale(0.98);
 }
 
-/* ===== ALBUM VIEW (cassette face carousel) ===== */
+/* ===== ALBUM VIEW (face carousel) ===== */
 
 .album-stage {
   flex: 1;
@@ -204,29 +193,25 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding: 16px;
+  padding: 16px 8px 8px;
 }
 
 .album-strip {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: flex-start;
   gap: 16px;
   transform: translateX(var(--album-offset, 0px));
-  transition: transform 0.3s ease-out;
+  transition: transform 0.25s ease-out;
 }
 
 .album-card {
   flex: 0 0 70vw;
   max-width: 360px;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.45;
+  opacity: 0.4;
   transform: scale(0.9);
-  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+  transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+  cursor: pointer;
 }
 
 .album-card img {
@@ -235,7 +220,6 @@ body {
   height: auto;
 }
 
-/* Center album emphasized, neighbors peek */
 .album-card.active {
   opacity: 1;
   transform: scale(1);
@@ -244,14 +228,28 @@ body {
 /* ===== NAV BAR ===== */
 
 .nav-bar {
-  padding: 8px 16px 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 8px 12px calc(env(safe-area-inset-bottom, 0px) + 10px);
 }
 
 .nav-row {
-  display: flex;
+  display: none;
   justify-content: center;
   gap: 8px;
+}
+
+/* which nav row is visible? */
+
+#app.view-home #home-nav {
+  display: flex;
+}
+
+#app.view-genre #genre-nav {
+  display: flex;
+}
+
+#app.view-album #album-nav {
+  display: flex;
 }
 
 .nav-pill {
@@ -266,7 +264,7 @@ body {
 }
 
 .nav-pill:disabled {
-  opacity: 0.3;
+  opacity: 0.25;
   cursor: default;
 }
 
@@ -279,53 +277,40 @@ body {
   color: #050509;
 }
 
-/* Show/hide appropriate nav rows */
-#app.view-home #home-nav {
-  display: flex;
-}
-#app.view-home #genre-nav,
-#app.view-home #album-nav {
-  display: none;
+/* Make sure the whole page never vertically scrolls on phone
+   (we only scroll inside album lists) */
+
+html,
+body {
+  overflow: hidden;
 }
 
-#app.view-genre #home-nav {
-  display: none;
-}
-#app.view-genre #genre-nav {
-  display: flex;
-}
-#app.view-genre #album-nav {
-  display: none;
-}
+/* ===== CASSETTE PULLOUT OVERLAY (2D ANIMATION) ===== */
 
-#app.view-album #home-nav,
-#app.view-album #genre-nav {
-  display: none;
-}
-#app.view-album #album-nav {
-  display: flex;
-}
-
-/* ===== CASSETTE PULL-OUT ANIMATION ===== */
-
-.pullout-overlay {
+.cassette-flip-overlay {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 40;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  opacity: 0;
+  z-index: 9999;
 }
 
-.pullout-overlay img {
+/* This is the overlay image we animate in JS */
+.cassette-flip-img {
   position: absolute;
-  will-change: transform; 
-  transform-origin: center center;
-  transition: transform 0.8s ease-out, opacity 0.2s ease-out;
-}
+  top: 0;
+  left: 0;
+  pointer-events: none;
 
-.pullout-overlay.active {
-  opacity: 1;
+  /* JS overrides transform/transform-origin, but we keep a simple default */
+  transform-origin: 0% 0%;
+  transform: translateY(0);
+
+  /* Let the browser optimize our animated properties */
+  will-change: transform, opacity, height;
+
+  /* Default transitions (JS will override transition string as needed) */
+  transition:
+    transform 0.3s ease-out,
+    opacity 0.3s ease-out,
+    height 0.3s ease-out;
 }

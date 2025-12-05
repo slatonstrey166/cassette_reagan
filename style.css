@@ -65,7 +65,7 @@ body {
 #app.view-home #home-view {
   display: flex;
   opacity: 1;
-  transform: scale(0.97);
+  transform: scale(1.02);
 }
 
 #app.view-genre #genre-view {
@@ -78,6 +78,16 @@ body {
   display: flex;
   opacity: 1;
   transform: scale(1.02);
+}
+
+/* Make absolutely sure non-active views are hidden */
+#app.view-home #genre-view,
+#app.view-home #album-view,
+#app.view-genre #home-view,
+#app.view-genre #album-view,
+#app.view-album #home-view,
+#app.view-album #genre-view {
+  display: none;
 }
 
 /* ===== SHELVES (home + genre) ===== */
@@ -93,30 +103,22 @@ body {
 /* HOME: whole wall, slightly smaller on phone */
 
 .home-shelf-wrapper {
-  padding-top: 8px;
+  padding-top: 40px;
 }
 
 #home-shelf {
   display: flex;
-  gap: 4px;
+  gap: 0px;
 }
 
 #home-shelf .genre-column {
   transform-origin: top center;
 }
 
-/* shrink wall on small screens so all 5 columns fit */
-@media (max-width: 480px) {
-  #home-shelf .genre-column {
-    transform: scale(0.45);
-    margin-right: -6px;
-  }
-}
-
 /* GENRE view: wider columns, centered active + neighbors */
 
 .genre-shelf-wrapper {
-  padding: 4px 0 0;
+  padding: 40px 0 0;
 }
 
 #genre-shelf {
@@ -138,9 +140,9 @@ body {
 }
 
 #genre-shelf .genre-column {
-  width: 180px;
-  min-width: 180px;
-  max-width: 180px;
+  width: 200px;
+  min-width: 200px;
+  max-width: 200px;
 }
 
 /* headers */
@@ -189,29 +191,40 @@ body {
 /* ===== ALBUM VIEW (face carousel) ===== */
 
 .album-stage {
-  flex: 1 1 auto;
-  min-height: 55vh;          /* <-- key part of Fix 4 */
+  flex: 1;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px 8px 8px;
   overflow: hidden;
 }
 
-/* The sliding strip of album cards */
+/* Desktop: make album stage narrower so centering math matches mobile */
+@media (min-width: 768px) {
+  .album-stage {
+    max-width: 420px;   /* tweak 380–460 to taste */
+    margin: 0 auto;     /* keep it centered within the page */
+  }
+}
+
 .album-strip {
   display: flex;
-  gap: 16px;
-  will-change: transform;
+  align-items: center;
+  justify-content: flex-start;
+
+  /* This is what updateAlbumOffset() manipulates */
   transform: translateX(var(--album-offset, 0px));
   transition: transform 260ms ease-out;
+
+  /* Keep neighbors visible but not massive */
+  gap: 16px;
 }
 
 
 @media (max-width: 480px) {
   .album-card {
-    flex: 0 0 78vw;          /* a bit wider on phone */
-    max-width: 420px;
+    max-height: 60vh; /* Use up most of the screen vertically */
+    width: auto; /* Maintain aspect ratio */
   }
 
   .album-card.active {
@@ -219,9 +232,8 @@ body {
   }
 }
 
-
 .album-card {
-  flex: 0 0 70vw;
+  flex: 0 0 60vw; /* increase or decrease to see less or more neighbors */
   max-width: 360px;
   opacity: 0.4;
   transform: scale(0.9);
@@ -279,8 +291,12 @@ body {
 }
 
 .nav-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   min-width: 64px;
-  padding: 6px 14px;
+  padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.35);
   background: transparent;
@@ -344,6 +360,39 @@ body {
 /* ===== MOBILE LAYOUT FIXES ===== */
 @media (max-width: 480px) {
 
+  /* HOME: make all 5 columns fit tightly like the desktop wall */
+  #home-shelf {
+    transform: scale(0.82);
+    transform-origin: top center;
+    gap: 0;
+  }
+
+  #home-shelf .genre-column {
+    width: 90px;
+    min-width: 90px;
+    max-width: 90px;
+    margin: 0 -1px;
+    transform: scale(1.0);
+    transform-origin: top center;
+  }
+
+  /* Center the rack vertically on iPhone */
+  #home-view {
+    flex-direction: column;
+    justify-content: center;   /* <-- vertical centering */
+    align-items: center;       /* <-- horizontal centering */
+    /* min-height: calc(100vh - 120px);  /* leaves room for bottom buttons - commented out */
+  }
+
+    /* Nudge the rack down a bit on iPhone */
+  #home-view .home-shelf-wrapper {
+    padding-top: 0px;   /* try 32; then adjust up/down to taste */
+  }
+
+  #home-view .shelf-wrapper {
+    align-items: center;         /* center the rack within the view */
+  }
+
   /* GENRE: a bit narrower so we still see neighbors */
   #genre-shelf .genre-column {
     width: 110px;
@@ -351,17 +400,37 @@ body {
     max-width: 110px;
   }
 
-  /* HOME: make all 5 columns fit tightly like the desktop wall */
-  #home-shelf {
-    transform: scale(0.82);          /* overall shrink of the wall */
-    transform-origin: top center;
+  .view-genre .album-list {
+    max-height: min(320px, 60vh);
   }
 
-  #home-shelf .genre-column {
-    width: 90px;
-    min-width: 90px;
-    max-width: 90px;
-    margin-right: -12px;             /* pulls columns closer together */
+  #app.view-genre .genre-shelf-wrapper {
+    padding-top: 30px; /* controls vertical alignment of Genre View */
+    padding-bottom: 180px;
+  }
+
+  #app.view-genre .genre-shelf-wrapper .column-group {
+    gap: 8px;
+  }
+
+  #app.view-genre .genre-shelf-wrapper .album-list {
+    max-height: min(360px, 65vh);
+  }
+
+  /* Reduce gaps in GENRE view so center + neighbors feel tight */
+  #genre-shelf {
+    gap: 0px;
+  }
+
+  /* iPhone: zoom in on Genre View so the center column fills the screen */
+  #app.view-genre #genre-view .stage {
+    overflow: hidden;           /* hide extra bits on left/right */
+  }
+
+  /* iPhone: zoom Genre but still allow horizontal centering */
+  #app.view-genre #genre-shelf {
+    transform: translateX(var(--shelf-offset, 0px)) scale(1.55); /* <-- tweak this up/down (1.35–1.70) */
+    transform-origin: top center;
   }
 
   /* Make album spines slightly taller for touch targets */
@@ -370,12 +439,54 @@ body {
     width: 100%;
   }
 
-  /* Reduce gaps in GENRE view so center + neighbors feel tight */
-  #genre-shelf {
-    gap: 0px;
-  }
     /* Let the spines use more vertical space on phone */
   .album-list {
-    max-height: calc(100vh - 135px); /* change to 120px for even more height */
+    max-height: calc(100vh - 125px); /* change to 120px for even more height */
+  }
+
+    /* Album View: center the active album nicely on iPhone */
+  #album-view {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;   /* vertical centering of the stage area */
+    align-items: center;       /* horizontal centering */
+  }
+
+  #album-view .album-stage {
+    align-items: center;       /* center cards vertically within stage */
+    justify-content: center;   /* center cards horizontally (strip is auto-centered by JS) */
+    padding-top: 8vh;          /* push the album a bit down from the very top */
+    padding-bottom: 18vh;      /* leave comfortable room above nav bar */
+  }
+
+  /* Let the active album use more height on phone */
+  .album-card {
+    max-height: 65vh;
+  }
+  
+}
+
+/* Desktop-only tuning for Album View – safe for iPhone */
+@media (min-width: 900px) {
+  /* Limit the album stage so neighbours are visible left/right */
+  .album-stage {
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  /* Give some gap between album cards */
+  .album-strip {
+    gap: 3vw;             /* adjust 2–4vw to taste */
+  }
+
+  /* Make sure each card isn’t so wide that it fills the whole stage */
+  .album-card {
+    flex: 0 0 260px;      /* 240–280px is a good range */
+  }
+
+  .album-card img {
+    width: 100%;
+    height: auto;
+    display: block;
   }
 }

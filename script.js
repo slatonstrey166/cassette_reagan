@@ -144,6 +144,7 @@ const albumViewEl = document.getElementById("album-view");
 const homeShelfEl = document.getElementById("home-shelf");
 const genreShelfEl = document.getElementById("genre-shelf");
 const albumStripEl = document.getElementById("album-strip");
+const stageEl = document.querySelector(".album-stage");
 
 // Overlay elements for cassette animation
 const pulloutOverlayEl = document.getElementById("cassette-flip-overlay");
@@ -335,11 +336,11 @@ function startPulloutAnimation(spineEl, genre, albumIndex) {
   // ---- Timing controls (ms) ----
   const SPINE_GROW_MS   = 1000;   // spine pull-out + grow
   const SPINE_SHRINK_MS = 800;   // spine shrink (horizontal only)
-  const FACE_GROW_MS    = 1000;   // face grow (vertical only)
+  const FACE_GROW_MS    = 1100;   // face grow (vertical only)
   const FACE_FLY_MS     = 1000;   // face fly to Album View
   const FACE_GROW_SCALE = 7.5;  // how tall the face grows, in multiples of spine height
-  const FACE_FLY_SCALE_X = 2.0; //how wide the face grows during Phase 4, fly and transition to Album view
-  const FACE_FLY_SCALE_Y = 2.0; //how tall the face grows during Phase 4, fly and transition to Album view
+  const FACE_FLY_SCALE_X = 1.3; //how wide the face grows during Phase 4, fly and transition to Album view
+  const FACE_FLY_SCALE_Y = 1.3; //how tall the face grows during Phase 4, fly and transition to Album view
 
   // Overlay elements
   const overlay = pulloutOverlayEl; // #pullout-overlay
@@ -426,58 +427,49 @@ function startPulloutAnimation(spineEl, genre, albumIndex) {
     });
   }, SPINE_GROW_MS + SPINE_SHRINK_MS);
 
-  // ---- PHASE 4: Face fly to Album View (resize WHILE flying) ----
-    setTimeout(() => {
-        const albumImgEl = document.querySelector("#album-image img");
-        let targetLeft, targetTop;
+    // ---- PHASE 4: Face fly to Album View (resize WHILE flying) ----
+  setTimeout(() => {
+    // Where we want the *center* of the flying face to end up.
+    // Tweak FLY_CENTER_Y if you want the final position higher/lower.
+    const FLY_CENTER_Y = 0.5; // 0.5 = true vertical middle; try 0.48–0.55 to taste.
 
-        // Current (pre-scale) overlay size in pixels
-        const baseWidth  = parseFloat(imgEl.style.width)  || imgEl.getBoundingClientRect().width;
-        const baseHeight = parseFloat(imgEl.style.height) || imgEl.getBoundingClientRect().height;
+    const viewportCenterX = window.innerWidth / 2;
+    const viewportCenterY = window.innerHeight * FLY_CENTER_Y;
 
-        if (albumImgEl) {
-            const r = albumImgEl.getBoundingClientRect();
+    // Current (pre-scale) overlay size in pixels
+    const baseWidth =
+      parseFloat(imgEl.style.width) || imgEl.getBoundingClientRect().width;
+    const baseHeight =
+      parseFloat(imgEl.style.height) || imgEl.getBoundingClientRect().height;
 
-            // Center of the album image
-            const albumCenterX = r.left + r.width / 2;
-            const albumCenterY = r.top  + r.height / 2;
+    // What the overlay size will be AFTER scale
+    const scaledWidth = baseWidth * FACE_FLY_SCALE_X;
+    const scaledHeight = baseHeight * FACE_FLY_SCALE_Y;
 
-            // What the overlay size will be AFTER scale
-            const scaledWidth  = baseWidth  * FACE_FLY_SCALE_X;
-            const scaledHeight = baseHeight * FACE_FLY_SCALE_Y;
+    // Position overlay so its CENTER matches our target center
+    const targetLeft = viewportCenterX - scaledWidth / 2;
+    const targetTop = viewportCenterY - scaledHeight / 2;
 
-            // Position overlay so its CENTER matches album center
-            targetLeft = albumCenterX - scaledWidth / 2;
-            targetTop  = albumCenterY - scaledHeight / 2;
-        } else {
-            // Fallback: approximate center of viewport using scaled size
-            const scaledWidth  = baseWidth  * FACE_FLY_SCALE_X;
-            const scaledHeight = baseHeight * FACE_FLY_SCALE_Y;
+    // 1) Start from the Phase 3 state without transitions
+    imgEl.style.transition = "none";
 
-            targetLeft = (window.innerWidth  - scaledWidth)  / 2;
-            targetTop  = (window.innerHeight * 0.35) - scaledHeight / 2;
-        }
+    // 2) Next frame: animate both position AND scale to the targets
+    requestAnimationFrame(() => {
+      imgEl.style.transition = `
+        top ${FACE_FLY_MS}ms ease-out,
+        left ${FACE_FLY_MS}ms ease-out,
+        transform ${FACE_FLY_MS}ms ease-out
+      `;
 
-        // 1) Start from the Phase 3 state without transitions
-        imgEl.style.transition = "none";
+      imgEl.style.left = `${targetLeft}px`;
+      imgEl.style.top = `${targetTop}px`;
 
-        // 2) Next frame: animate both position AND scale to the targets
-        requestAnimationFrame(() => {
-            imgEl.style.transition =
-                `top ${FACE_FLY_MS}ms ease-out,
-                left ${FACE_FLY_MS}ms ease-out,
-                transform ${FACE_FLY_MS}ms ease-out`;
-
-            imgEl.style.left = `${targetLeft}px`;
-            imgEl.style.top  = `${targetTop}px`;
-
-            imgEl.style.transform =
-                `translateY(0) scale(${FACE_FLY_SCALE_X}, ${FACE_FLY_SCALE_Y})`;
-        });
-    }, SPINE_GROW_MS + SPINE_SHRINK_MS + FACE_GROW_MS);
+      imgEl.style.transform = `translateY(0) scale(${FACE_FLY_SCALE_X}, ${FACE_FLY_SCALE_Y})`;
+    });
+  }, SPINE_GROW_MS + SPINE_SHRINK_MS + FACE_GROW_MS);
 
 
-  // ---- PHASE 5: Show Album View & fade overlay ----
+    // ---- PHASE 5: Show Album View & fade overlay ----
   setTimeout(() => {
     // Switch to album view
     activeAlbumIndex = albumIndex;
@@ -487,77 +479,95 @@ function startPulloutAnimation(spineEl, genre, albumIndex) {
     }
     setView("album");
 
-    // Fade out overlay
+    // Fade out overlay smoothly
     imgEl.style.transition = "opacity 0.35s ease-out";
     imgEl.style.opacity = "0";
 
+    // After fade completes, completely reset and hide overlay
     setTimeout(() => {
-        // Remove overlay image completely
-        imgEl.src = "";
-        imgEl.style.width = "0px";
-        imgEl.style.height = "0px";
-        imgEl.style.opacity = "0";
-        
-        // Hide overlay container
-        overlay.classList.remove("active");
-        overlay.classList.add("hidden");
-        overlay.style.display = "none";
-        
-        // Restore original spine
-        spineEl.style.opacity = "1";
-    }, 350);
+      imgEl.src = "";
+      imgEl.style.width = "0px";
+      imgEl.style.height = "0px";
+      imgEl.style.opacity = "0";
+      imgEl.style.transform = "translateY(0) scale(1, 1)";
+      imgEl.style.left = "0px";
+      imgEl.style.top = "0px";
 
+      overlay.classList.remove("active");
+      overlay.classList.add("hidden");
+      overlay.style.display = "none";
+
+      // Restore original spine
+      spineEl.style.opacity = "1";
+    }, 350);
   }, SPINE_GROW_MS + SPINE_SHRINK_MS + FACE_GROW_MS + FACE_FLY_MS);
 }
 
-
 // ===== 7. ALBUM VIEW =====
-
 function updateAlbumOffset() {
   const cards = Array.from(albumStripEl.querySelectorAll(".album-card"));
-  if (!cards.length) return;
+  if (!cards.length || !stageEl) return;
 
-  // Ensure activeAlbumIndex is always in range
+  // Clamp index just in case
   const maxIndex = cards.length - 1;
   activeAlbumIndex = Math.max(0, Math.min(activeAlbumIndex, maxIndex));
 
-  // Mark the active card
-  cards.forEach((card, i) => {
-    card.classList.toggle("active", i === activeAlbumIndex);
-  });
-
-  // Get actual live geometry (THIS is what fixes iPhone)
-  const stageEl = document.querySelector(".album-stage");
-  const stageRect = stageEl.getBoundingClientRect();
-  const stripRect = albumStripEl.getBoundingClientRect();
   const activeCard = cards[activeAlbumIndex];
-  const cardRect = activeCard.getBoundingClientRect();
 
-    // Real center of the stage (viewport area that albums occupy)
-    const stageCenter = stageRect.width / 2;
+  // Detect "coarse" pointer devices (phones/tablets) vs desktop
+  const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
 
-    // Real center of the active card, relative to the strip
-    const cardCenter =
-        (cardRect.left - stripRect.left) + (cardRect.width / 2);
+  if (isCoarsePointer) {
+    // ==== MOBILE / TOUCH PATH (keep existing math – it already works) ====
+    const cardWidth = activeCard.offsetWidth;
 
-    // Center of the strip itself
-    const stripCenter = stripRect.width / 2;
+    const stripStyles = getComputedStyle(albumStripEl);
+    let gap = parseFloat(stripStyles.columnGap || stripStyles.gap || "0");
+    if (Number.isNaN(gap)) gap = 0;
 
-    // Small left/right bias on phones only
-    const bias = window.innerWidth <= 480 ? 8 : 0;
+    const i = activeAlbumIndex;
+    const cardCenterInStrip = i * (cardWidth + gap) + cardWidth / 2;
 
-    // Amount to shift
-    const delta = stripCenter - cardCenter - bias;
+    const stageWidth = stageEl.clientWidth;
+    const stageCenterInStrip = stageWidth / 2; // strip is full-width on mobile
 
-    // Apply smoothly
-    albumStripEl.style.setProperty("--album-offset", `${delta}px`);
+    const neededOffset = stageCenterInStrip - cardCenterInStrip;
+    albumStripEl.style.setProperty("--album-offset", `${neededOffset}px`);
+  } else {
+    // ==== DESKTOP PATH (use real DOM geometry) ====
+    const stripRect = albumStripEl.getBoundingClientRect();
+    const cardRect = activeCard.getBoundingClientRect();
+    const stageRect = stageEl.getBoundingClientRect();
+
+    // Card center in strip coordinates
+    const cardCenterInStrip =
+      (cardRect.left - stripRect.left) + cardRect.width / 2;
+
+    // Stage center expressed in strip coordinates
+    const stageCenterInStrip =
+      (stageRect.left - stripRect.left) + stageRect.width / 2;
+
+    const neededOffset = stageCenterInStrip - cardCenterInStrip;
+    albumStripEl.style.setProperty("--album-offset", `${neededOffset}px`);
+  }
+
+  // Highlight active card & update nav buttons
+  cards.forEach((c, idx) => {
+    c.classList.toggle("active", idx === activeAlbumIndex);
+  });
 
   updateNavButtons();
 }
 
+
 function renderAlbumView() {
   const genre = genres[activeGenreIndex];
   const albums = genre.albums;
+ 
+  // IMPORTANT: always reset the strip offset when entering Album View.
+  // This prevents any leftover offset from a previous album/genre
+  // from throwing off the centering for the first album.
+  albumStripEl.style.setProperty("--album-offset", "0px");
 
   albumStripEl.innerHTML = "";
 
@@ -581,8 +591,13 @@ function renderAlbumView() {
     albumStripEl.appendChild(card);
   });
 
-  updateAlbumOffset();
+      // IMPORTANT: delay initial centering until after layout is complete
+  requestAnimationFrame(() => {
+    updateAlbumOffset();
+  });
 }
+
+
 
 // swipe between albums
 (function setupAlbumSwipe() {
@@ -617,6 +632,49 @@ function renderAlbumView() {
     { passive: true }
   );
 })();
+
+// swipe between genres (Genre View)
+(function setupGenreSwipe() {
+  // Listen on the whole genre view area so swipes are easy to hit
+  const stage = document.querySelector("#genre-view");
+  if (!stage) return;
+
+  let startX = 0;
+
+  stage.addEventListener(
+    "touchstart",
+    (e) => {
+      // Only care about swipes when we're actually in Genre View
+      if (currentView !== "genre") return;
+      startX = e.changedTouches[0].clientX;
+    },
+    { passive: true }
+  );
+
+  stage.addEventListener(
+    "touchend",
+    (e) => {
+      if (currentView !== "genre") return;
+
+      const dx = e.changedTouches[0].clientX - startX;
+      const threshold = 30; // minimum swipe distance
+
+      if (Math.abs(dx) < threshold) return;
+
+      if (dx < 0 && activeGenreIndex < genres.length - 1) {
+        // swipe LEFT → next genre
+        activeGenreIndex++;
+        renderGenreShelf();
+      } else if (dx > 0 && activeGenreIndex > 0) {
+        // swipe RIGHT → previous genre
+        activeGenreIndex--;
+        renderGenreShelf();
+      }
+    },
+    { passive: true }
+  );
+})();
+
 
 function playCurrentAlbum() {
   const album = genres[activeGenreIndex].albums[activeAlbumIndex];
@@ -688,5 +746,3 @@ albumPlayBtn.addEventListener("click", () => {
 
 renderHomeShelf();
 setView("home");
-
-
